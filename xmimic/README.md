@@ -82,7 +82,7 @@ For new skills, the recommended video-to-policy pipeline is:
    motion from monocular video.
 2. **[UMR](https://github.com/hanyang9/UMR)** retargets the recovered human
    motion to the G1 humanoid.
-3. **[XGen](../xgen/xgen_editor/README.md)** edits and synthesizes physically
+3. **[XGen](../xgen/README.md)** edits and synthesizes physically
    plausible humanoid-object interaction motion, and exports HOI `.npz` files.
 4. XMimic converts the XGen HOI `.npz` files into HumanX `.pkl` files and
    trains the interaction policy. See [XGen to XMimic Data Pipeline](#xgen-to-xmimic-data-pipeline) for the

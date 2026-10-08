@@ -59,7 +59,7 @@ For new skills, the recommended video-to-policy pipeline is:
 HumanX/
   xgen/                         XGen HOI editing, conversion, and data docs
     xgen_editor/                XGen editor and conversion tools
-    data/                       Data format and quality documentation
+    data/                       Example XGen motion data
   xmimic/                       Simulation-side imitation learning
     humanoidverse/              Training, evaluation, environments, and configs
     tools/                      Dataset conversion and visualization tools

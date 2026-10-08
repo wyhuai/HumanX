@@ -36,7 +36,7 @@ The files required by the released XGen workflow are organized as follows:
 ```text
 xgen/
 ├── data/
-│   ├── DATA_FORMAT.md       # Data format documentation
+│   ├── example/             # Bundled example NPZ files
 │   └── <dataset>/           # Local NPZ batches, such as speed_capped_5mps/
 └── xgen_editor/
     ├── hoi_editor/
@@ -370,11 +370,13 @@ optimization metadata.
 
 ## Example: Browse Existing HOI Data
 
-The lightweight public tree includes one HOI example that can be opened
-directly:
+The public tree includes the following examples under `data/example/`,
+which can be opened directly:
 
 ```text
-data/example/IMG_6360_robot_only_synth_hoi.npz
+data/example/basketball_catch_throw_hoi.npz        # HOI: basketball catch-and-throw
+data/example/box_pick_robot_only_synth_hoi.npz     # HOI: box pick-up
+data/example/box_pick_robot_only.npz               # Robot-only source of the box example
 ```
 
 After starting the editor, select `example` under `HOI datasets` on the left

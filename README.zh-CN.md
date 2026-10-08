@@ -59,7 +59,7 @@ HumanX 是一个将人类视频转换为敏捷且可泛化的人形机器人交�
 HumanX/
   xgen/                         XGen HOI 编辑、转换和数据文档
     xgen_editor/                XGen 编辑器和转换工具
-    data/                       数据格式和质量文档
+    data/                       XGen 示例 motion 数据
   xmimic/                       仿真侧模仿学习代码
     humanoidverse/              训练、评估、环境和配置
     tools/                      数据集转换和可视化工具
@@ -71,14 +71,13 @@ HumanX/
 请根据要运行的组件阅读对应 README：
 
 - [XGen README](xgen/README.md)：XGen 编辑器、动作格式、HOI 合成、可视化和转换工具。
-- [XMimic README](xmimic/README.zh-CN.md)：安装、训练、评估、XGen 到 XMimic 的数据转换和 motion playback。
-- [XMimic English README](xmimic/README.md)：XMimic 的英文使用说明。
+- [XMimic README](xmimic/README.md)（英文）：安装、训练、评估、XGen 到 XMimic 的数据转换和 motion playback。
 
 ## 完整流程
 
 1. 使用 [XGen](xgen/README.md) 检查机器人动作、合成 HOI 数据，并导出 `.npz` motion 文件。
-2. 按照 [XMimic 数据管线](xmimic/README.zh-CN.md#xgen-到-xmimic-的数据管线)，将 XGen HOI 数据转换为 HumanX `.pkl` motion 数据。
-3. 按照 [XMimic 训练和评估说明](xmimic/README.zh-CN.md#训练)训练、评估并可视化策略。
+2. 按照 [XMimic 数据管线](xmimic/README.md#xgen-to-xmimic-data-pipeline)，将 XGen HOI 数据转换为 HumanX `.pkl` motion 数据。
+3. 按照 [XMimic 训练和评估说明](xmimic/README.md#training)训练、评估并可视化策略。
 
 对于标准数据接口，请将 XGen 源数据和 XMimic 生成的 motion 文件放在各自
 组件的 `data/` 目录下。
