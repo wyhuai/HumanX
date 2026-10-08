@@ -371,13 +371,7 @@ optimization metadata.
 ## Example: Browse Existing HOI Data
 
 The public tree includes the following examples under `data/example/`,
-which can be opened directly:
-
-```text
-data/example/basketball_catch_throw_hoi.npz        # HOI: basketball catch-and-throw
-data/example/box_pick_robot_only_synth_hoi.npz     # HOI: box pick-up
-data/example/box_pick_robot_only.npz               # Robot-only source of the box example
-```
+which can be opened directly.
 
 After starting the editor, select `example` under `HOI datasets` on the left
 and then select the `.npz` file to inspect the robot, object, contact,
