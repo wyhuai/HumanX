@@ -23,7 +23,7 @@ class VisRrMotionLoadingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.repo_root = Path(__file__).resolve().parents[1]
-        cls.sample_pkl = cls.repo_root / "data/motions/humanx_demo/BMaster_catch_yaw0_mean.pkl"
+        cls.sample_pkl = cls.repo_root / "data/motions/example/basketball_catch_throw.pkl"
         cls.sample_data = joblib.load(cls.sample_pkl)
         cls.motion_key = next(iter(cls.sample_data))
 
