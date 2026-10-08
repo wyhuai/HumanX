@@ -1,0 +1,11 @@
+# @package _global_
+
+defaults:
+  - DAgger
+
+algo:
+  _target_: humanoidverse.agents.dagger.DAggerKL.DAggerKL
+  config:
+    dagger_coef: 0.1
+    dagger_coef_anneal_steps: 60000
+    dagger_coef_min: 0.01

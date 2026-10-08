@@ -1,0 +1,34 @@
+docs/superpowers
+runs/
+logs/
+logs_eval/
+data/*
+!data/motions/
+data/motions/*
+!data/motions/example/
+!data/motions/example/**
+
+*.egg-info/
+__pycache__/
+venv/
+__pycache__/*
+*/__pycache__/
+
+*.__pycache__
+*.pyc
+*.0
+
+# *.pkl
+.hydra/
+
+.cursorindexingignore
+.specstory
+
+.vscode/
+
+# rss-related
+humanoidverse/rss_eval.py
+humanoidverse/envs/humanx/rss_eval.py
+humanoidverse/config/algo/rss_eval.yaml
+humanoidverse/config/env/rss_eval.yaml
+humanoidverse/config/exp/rss_eval.yaml

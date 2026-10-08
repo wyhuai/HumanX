@@ -1,0 +1,195 @@
+# @package _global_
+
+# Be careful when using _raw, history
+obs:
+  obs_dict:
+    actor_obs: [
+      base_ang_vel, #3
+      projected_gravity, #3
+      dof_pos, #robot.dof_obs_size, 29
+      dof_vel, #robot.dof_obs_size, 29
+      actions, #robot.dof_obs_size, 29
+      pd_error, #robot.dof_obs_size, 29
+      local_curr_ball_position, #3
+      history_actor,
+      amp_expert_dof_pos,
+      amp_expert_dof_vel,
+    ]
+
+    critic_obs: [
+      base_lin_vel,
+      base_ang_vel,
+      projected_gravity,
+      actions,
+      dof_pos,
+      local_keybodies_pos,
+      local_keybodies_vel,
+      dif_local_rigid_body_pos,
+      local_ref_rigid_body_pos,
+      local_curr_ball_position_wo_packet_loss, # local_curr_ball_position,
+      local_ref_ball_position,
+      diff_ig,
+      curr_interaction_graph,
+      bodies_contact_force,
+      history_critic,
+      amp_expert_dof_pos,
+      amp_expert_dof_vel,
+    ]
+
+    # AMP requires these two keys (used by AMP_PPO). Keeping them here makes this obs config
+    # compatible with both PPO and AMP without changing actor/critic obs structure.
+    amp_obs: [
+      local_amp_body_pos,
+      local_amp_body_vel,
+      amp_dof_pos,
+      amp_dof_vel,
+      history_amp,
+    ]
+
+    amp_expert_obs: [
+      local_amp_expert_body_pos,
+      local_amp_expert_body_vel,
+      amp_expert_dof_pos,
+      amp_expert_dof_vel,
+      history_expert_amp,
+    ]
+
+  obs_auxiliary: # define those coumpounds in obs_dict, for example, you can define different long/short history with different length
+
+    history_actor: {
+      base_ang_vel: 4,
+      projected_gravity: 4,
+      actions: 4,
+      dof_pos: 4,
+      dof_vel: 4,
+      local_curr_ball_position: 4,
+    }
+
+    history_critic: {
+      base_lin_vel: 4,
+      base_ang_vel: 4,
+      projected_gravity: 4,
+      dof_pos: 4,
+      dof_vel: 4,
+      actions: 4,
+      local_keybodies_pos: 4,
+      local_curr_ball_position_wo_packet_loss: 4,
+      amp_expert_dof_pos: 4,
+      amp_expert_dof_vel: 4,
+    }
+
+    history_amp: {
+      local_amp_body_pos: 25,
+      local_amp_body_vel: 25,
+      amp_dof_pos: 25,
+      amp_dof_vel: 25,
+    }
+
+    history_expert_amp: {
+      local_amp_expert_body_pos: 25,
+      local_amp_expert_body_vel: 25,
+      amp_expert_dof_pos: 25,
+      amp_expert_dof_vel: 25,
+    }
+
+  obs_scales: {
+    base_lin_vel: 2.0,
+    base_ang_vel: 0.25,
+    projected_gravity: 1.0,
+    dof_pos: 1.0,
+    dof_vel: 0.05,
+    actions: 1.0,
+    dif_local_rigid_body_pos: 1.0,
+    local_ref_rigid_body_pos: 1.0,
+    history_actor: 1.0,
+    history_critic: 1.0,
+    local_curr_ball_position: 1.0,
+    local_ref_ball_position: 1.0,
+    curr_interaction_graph: 1.0,
+    diff_ig: 1.0,
+    local_keybodies_pos: 1.0,
+    local_keybodies_vel: 1.0,
+    bodies_contact_force: 1.0,
+    pd_error: 1.0,
+    amp_expert_dof_pos: 1.0,
+    amp_expert_dof_vel: 1.0,
+    local_curr_ball_position_wo_packet_loss: 1.0,
+    history_amp: 1.0,
+    history_expert_amp: 1.0,
+    local_amp_body_pos: 1.0,
+    local_amp_body_vel: 1.0,
+    amp_dof_pos: 1.0,
+    amp_dof_vel: 1.0,
+    local_amp_expert_body_pos: 1.0,
+    local_amp_expert_body_vel: 1.0,
+  }
+
+  noise_scales: {
+    base_lin_vel: 0.0,
+    base_ang_vel: 0.3,
+    projected_gravity: 0.2,
+    dof_pos: 0.01,
+    dof_vel: 1.0,
+    actions: 0.0,
+    dif_local_rigid_body_pos: 0.0,
+    local_ref_rigid_body_pos: 0.0,
+    history_actor: 0.0,
+    history_critic: 0.0,
+    local_curr_ball_position: 0.01,
+    local_ref_ball_position: 0.0,
+    curr_interaction_graph: 0.01,
+    diff_ig: 0.0,
+    local_keybodies_pos: 0.01,
+    local_keybodies_vel: 0.01,
+    bodies_contact_force: 0.0,
+    pd_error: 0.01,
+    amp_expert_dof_pos: 0.0,
+    amp_expert_dof_vel: 0.0,
+    local_curr_ball_position_wo_packet_loss: 0.0,
+    history_amp: 0.0,
+    history_expert_amp: 0.0,
+    local_amp_body_pos: 0.0,
+    local_amp_body_vel: 0.0,
+    amp_dof_pos: 0.0,
+    amp_dof_vel: 0.0,
+    local_amp_expert_body_pos: 0.0,
+    local_amp_expert_body_vel: 0.0,
+  }
+
+  add_noise_currculum: False
+  noise_initial_value: 0.05
+  noise_value_max: 1.0
+  noise_value_min: 0.00001
+  soft_dof_pos_curriculum_degree: 0.00001
+
+  obs_dims:
+    - base_lin_vel: 3
+    - base_ang_vel: 3
+    - projected_gravity: 3
+    - dof_pos: ${robot.dof_obs_size}
+    - dof_vel: ${robot.dof_obs_size}
+    - actions: ${robot.dof_obs_size}
+    - dif_local_rigid_body_pos: ${eval:'3 * ${robot.num_bodies} + 21'} # hardcoded for 7 extended body
+    - local_ref_rigid_body_pos: ${eval:'3 * ${robot.num_bodies} + 21'}
+    - local_curr_ball_position: 3
+    - local_ref_ball_position: 3
+    - bodies_contact_force: ${eval:'3 * len(${robot.hoi_no_contact_bodies}) + 3 * 1'}
+    - curr_interaction_graph: ${eval:'3 * len(${robot.hoi_interaction_bodies})'}
+    - diff_ig: ${eval:'3 * len(${robot.hoi_interaction_bodies})'}
+    - local_keybodies_pos: ${eval:'3 * len(${robot.key_body_names})'}
+    - local_keybodies_vel: ${eval:'3 * len(${robot.key_body_names})'}
+    - pd_error: ${robot.dof_obs_size}
+    - amp_expert_dof_pos: ${eval:'len(${robot.amp_dof_selected})'}
+    - amp_expert_dof_vel: ${eval:'len(${robot.amp_dof_selected})'}
+    - local_curr_ball_position_wo_packet_loss: 3
+    - local_amp_body_pos: ${eval:'3 * len(${robot.amp_keypos_selected})'}
+    - local_amp_body_vel: ${eval:'3 * len(${robot.amp_keypos_selected})'}
+    - amp_dof_pos: ${eval:'len(${robot.amp_dof_selected})'}
+    - amp_dof_vel: ${eval:'len(${robot.amp_dof_selected})'}
+    - local_amp_expert_body_pos: ${eval:'3 * len(${robot.amp_keypos_selected})'}
+    - local_amp_expert_body_vel: ${eval:'3 * len(${robot.amp_keypos_selected})'}
+    
+
+  post_compute_config: {} # Will store values after preprocessing, don't put anything here
+  
+  use_projectile_as_obj_obs: false # Temporary switch: use projectile as obj/ball related observations for policy/critic (default off, backward compatible)

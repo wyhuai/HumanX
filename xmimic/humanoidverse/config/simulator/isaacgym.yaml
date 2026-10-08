@@ -1,0 +1,31 @@
+# @package _global_
+
+# Env structure
+simulator:
+  _target_: humanoidverse.simulator.isaacgym.isaacgym.IsaacGym
+  _recursive_: False
+  config:
+    name: "isaacgym"
+    terrain: ${terrain}
+    plane:
+        static_friction: 1.0
+        dynamic_friction: 1.0
+        restitution: 0.0
+    sim:
+      fps: 200
+      control_decimation: 4
+      substeps: 1
+      physx:
+        num_threads: 4
+        solver_type: 1 # 0: pgs, 1: tgs
+        num_position_iterations: 4
+        num_velocity_iterations: 0
+        contact_offset: 0.01
+        rest_offset: 0.0
+        bounce_threshold_velocity: 0.5
+        max_depenetration_velocity: 1.0
+        default_buffer_size_multiplier: 5
+        # For huge num_envs, consider increasing this to avoid GPU broadphase buffer warnings
+        # (and potentially missed interactions).
+        # max_gpu_contact_pairs: 2097152  # 2 * 1024 * 1024 (try 4M/8M if still not enough)
+        contact_collection: 2

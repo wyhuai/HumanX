@@ -1,0 +1,40 @@
+<mujoco model="g1_29dof scene">
+  <include file="g1_29dof_old.xml"/>
+
+  <statistic center="0 0 0.5" extent="2.0"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="-130" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3"
+      markrgb="0.8 0.8 0.8" width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2"/>
+    <mesh name="laboratory_wall_mesh" file="/home/ps/kluoaf/mujoco-3dgs-bridge/configs/collision/laboratory_wall_unit.obj"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
+    <!-- Site -->
+    <site name="com_marker" pos="0.1 0 0" size="0.05" rgba="1 0 0 1" type="sphere"/>
+    <site name="left_hand_marker" pos="0.1 0 0" size="0.025" rgba="0 1 0 1" type="sphere"/>
+    <site name="right_hand_marker" pos="0.1 0 0" size="0.025" rgba="0 1 0 1" type="sphere"/>
+    <site name="left_foot_marker" pos="0.1 0 0" size="0.025" rgba="1 0 0 1" type="sphere"/>
+    <site name="right_foot_marker" pos="0.1 0 0" size="0.025" rgba="1 0 0 1" type="sphere"/>
+    <camera name="global_view" pos="2.910 -5.040 3.860" xyaxes="0.866 0.500 0.000 -0.250 0.433 0.866"/>
+    <body name="box" pos="2 0 0.2">
+      <geom type="box" size="0.2 0.2 0.2" rgba="0.75 0.45 0.15 1" contype="0" conaffinity="0"/>
+    </body>
+    <geom name="laboratory_wall_main" type="mesh" mesh="laboratory_wall_mesh"
+      pos="0 0 -100" contype="1" conaffinity="1" friction="1.0 0.005 0.0001"
+      rgba="0.36 0.42 0.46 0.55"/>
+  </worldbody>
+  <!-- <default>
+    <geom friction="0.5"/>
+  </default> -->
+</mujoco>

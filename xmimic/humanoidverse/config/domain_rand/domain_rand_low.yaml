@@ -1,0 +1,64 @@
+# @package _global_
+
+domain_rand:
+
+  # add random forces to robots
+  disturb_robots : true
+  disturb_interval_s : [1, 2]
+  disturbance_range: [-20, 20]
+  disturbance_range_at_stand: [-50, 50]
+
+  # push robots
+  push_robots : True 
+  push_interval_s : [1, 5]
+  max_push_vel_xyz : 0.5
+  max_push_ang_vel_xyz: 0.52
+
+  # base com
+  randomize_base_com : True
+  base_com_range:
+    x : [-0.025, 0.025]
+    y : [-0.05, 0.05]
+    z : [-0.05, 0.05]
+
+  # link mass
+  randomize_link_mass : True
+  link_mass_range : [0.9, 1.1]
+
+  # pd gain
+  randomize_pd_gain : True
+  kp_range : [0.9, 1.1]
+  kd_range : [0.9, 1.1]
+
+  # friction
+  randomize_friction : True
+  friction_range : [0.5, 1.25] # body friction
+
+  # base mass
+  randomize_base_mass : False
+  added_mass_range: [-1.0, 1.0]
+
+  # object (e.g., ball) DR (per-env, sampled at env creation)
+  randomize_object_scale: False
+  object_scale_range: [0.9, 1.1]   # factor applied to simulator.config.object_scales.ball_scale
+  randomize_object_mass: False
+  object_mass_range: [0.9, 1.1]    # factor applied to nominal mass after scaling
+  
+  # rfi
+  randomize_torque_rfi : True
+  rfi_lim : 0.1
+  randomize_rfi_lim : False
+  rfi_lim_range : [0.9, 1.1]
+
+
+  # control delay
+  randomize_ctrl_delay : False
+  ctrl_delay_step_range : [0, 2] 
+
+  # decimation delay
+  randomize_decimation_delay : False
+  decimation_delay_step_range : [0, 1] 
+
+  # default pos
+  randomize_default_pos : True
+  default_pos_range : [-0.01, 0.01]

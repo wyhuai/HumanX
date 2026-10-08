@@ -1,0 +1,65 @@
+# @package _global_
+
+# Env structure
+simulator:
+  _target_: humanoidverse.simulator.isaacgym.isaacgym_hoi.IsaacGym
+  _recursive_: False
+  config:
+    name: "isaacgym"
+    terrain: ${terrain}
+    plane:
+        static_friction: 1.0
+        dynamic_friction: 1.0
+        restitution: 0. # not working here, see terrain.yaml
+    sim:
+      fps: 200
+      control_decimation: 2
+      substeps: 1
+      physx:
+        num_threads: 4
+        solver_type: 1 # 0: pgs, 1: tgs
+        num_position_iterations: 4
+        num_velocity_iterations: 0
+        contact_offset: 0.01
+        rest_offset: 0.0
+        bounce_threshold_velocity: 0.5
+        max_depenetration_velocity: 1.0
+        default_buffer_size_multiplier: 5
+        # For huge num_envs (e.g., 16384), PhysX GPU broadphase buffers may be too small.
+        # Increasing this helps avoid warnings like:
+        #   "increase PxgDynamicsMemoryConfig::foundLostAggregatePairsCapacity..., otherwise miss interactions"
+        # NOTE: Isaac Gym Python only exposes coarse knobs like max_gpu_contact_pairs.
+        max_gpu_contact_pairs: ${eval:'2**23'}  # 4 * 1024 * 1024 (try 4M/8M if still not enough)
+        contact_collection: 2
+    
+    # Object asset configuration
+    objects:
+      ball:
+        # Mass precedence in current code:
+        # 1) if `mass` is set -> use it as runtime mass (kg)
+        # 2) if `mass` is null/missing -> use URDF inertial mass
+        # `density` is only an asset-load option and does not decide final runtime mass here.
+        asset_root: "humanoidverse/asset/objects"   # Asset root directory for object files
+        # If null, infer the object asset from the motion filename prefix.
+        # An explicit URDF override always takes precedence.
+        urdf_file: null                             # URDF path relative to asset_root
+        texture_file: null                          # Explicit texture path; null enables sibling-directory auto-discovery.
+        auto_detect_from_motion: true               # Infer URDF from robot.motion.motion_file when urdf_file is null.
+        # Asset options
+        fix_base_link: False                        # True makes the ball static/kinematic (it will not fall or be pushed)
+        disable_gravity: False
+        angular_damping: 0.01
+        linear_damping: 0.01
+        max_angular_velocity: 100.0
+        density: 1000.0                              # Load-time fallback only (mainly useful when no usable mass comes from URDF/code)
+        friction: 1.0
+        restitution: 0.81
+        mass: null                                   # Runtime mass override in kg; null/missing means "use URDF mass".
+      # Projectile (perturb object) configuration. Keep defaults as null for backward compatibility.
+      proj:
+        friction: null
+    
+    # Object scale parameters
+    object_scales:
+      ball_scale: null     # null: infer from motion object_size; number: explicit uniform scale
+      proj_scale: 1.5      # Projectile scale

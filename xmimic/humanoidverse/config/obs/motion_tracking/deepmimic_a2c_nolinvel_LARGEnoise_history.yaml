@@ -1,0 +1,100 @@
+# @package _global_
+
+# Be careful when using _raw, history
+obs:
+  obs_dict:
+    actor_obs: [
+      base_ang_vel,
+      projected_gravity,
+      dof_pos,
+      dof_vel,
+      actions,
+      ref_motion_phase,
+      # dif_local_rigid_body_pos,
+      # local_ref_rigid_body_pos,
+      # history,
+      history_actor
+    ]
+
+    critic_obs: [
+      base_lin_vel,
+      base_ang_vel,
+      projected_gravity,
+      dof_pos,
+      dof_vel,
+      actions,
+      ref_motion_phase,
+      dif_local_rigid_body_pos,
+      local_ref_rigid_body_pos,
+      history_critic
+    ]
+
+  obs_auxiliary: # define those coumpounds in obs_dict, for example, you can define different long/short history with different length
+
+    history_actor: {
+      base_ang_vel: 4,
+      projected_gravity: 4,
+      dof_pos: 4,
+      dof_vel: 4,
+      actions: 4,
+      ref_motion_phase: 4
+    }
+
+    history_critic: {
+      base_lin_vel: 4,
+      base_ang_vel: 4,
+      projected_gravity: 4,
+      dof_pos: 4,
+      dof_vel: 4,
+      actions: 4,
+      ref_motion_phase: 4
+    }
+
+  obs_scales: {
+    base_lin_vel: 2.0,
+    base_ang_vel: 0.25,
+    projected_gravity: 1.0,
+    dof_pos: 1.0,
+    dof_vel: 0.05,
+    actions: 1.0,
+    dif_local_rigid_body_pos: 1.0,
+    local_ref_rigid_body_pos: 1.0,
+    ref_motion_phase: 1.0,
+    history_actor: 1.0,
+    history_critic: 1.0,
+  }
+
+  noise_scales: {
+    base_lin_vel: 0.0,
+    base_ang_vel: 0.3,
+    projected_gravity: 0.2,
+    dof_pos: 0.01,
+    dof_vel: 1.0,
+    actions: 0.0,
+    dif_local_rigid_body_pos: 0.0,
+    local_ref_rigid_body_pos: 0.0,
+    ref_motion_phase: 0.0,
+    history_actor: 0.0,
+    history_critic: 0.0,
+  }
+
+  add_noise_currculum: False
+  noise_initial_value: 0.05
+  noise_value_max: 1.0
+  noise_value_min: 0.00001
+  soft_dof_pos_curriculum_degree: 0.00001
+  soft_dof_pos_curriculum_level_down_threshold: 40
+  soft_dof_pos_curriculum_level_up_threshold: 42
+
+  obs_dims:
+    - base_lin_vel: 3
+    - base_ang_vel: 3
+    - projected_gravity: 3
+    - dof_pos: ${robot.dof_obs_size}
+    - dof_vel: ${robot.dof_obs_size}
+    - actions: ${robot.dof_obs_size}
+    - dif_local_rigid_body_pos: ${eval:'3 * ${robot.num_bodies} + 9'} # hardcoded for 3 extended body
+    - local_ref_rigid_body_pos: ${eval:'3 * ${robot.num_bodies} + 9'}
+    - ref_motion_phase: 1
+
+  post_compute_config: {} # Will store values after preprocessing, don't put anything here

@@ -1,0 +1,12 @@
+# @package _global_
+
+algo:
+  config:
+    eval_callbacks:
+      analysis_plot_cb:
+        _target_: humanoidverse.agents.callbacks.analysis_plot_motion_tracking.AnalysisPlotMotionTracking
+        config:
+          sim_dt: 0.02
+          log_single_robot: False
+          plot_update_interval: 100
+          compute_metrics: False

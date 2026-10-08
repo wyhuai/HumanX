@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Human SMPL Joint Viewer</title>
+    <link rel="stylesheet" href="/style.css?v=5" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <h1>SMPL Motion Viewer</h1>
+          <p id="motionRoot">Loading motions...</p>
+        </div>
+        <label class="field">
+          <span>Motion</span>
+          <select id="motionSelect"></select>
+        </label>
+        <div class="meta-grid">
+          <div>
+            <span class="meta-label">Frames</span>
+            <strong id="frameCount">-</strong>
+          </div>
+          <div>
+            <span class="meta-label">FPS</span>
+            <strong id="fpsValue">-</strong>
+          </div>
+          <div>
+            <span class="meta-label">Joint</span>
+            <strong id="selectedJointName">20 left_hand</strong>
+          </div>
+          <div>
+            <span class="meta-label">XYZ</span>
+            <strong id="selectedJointPosition">-</strong>
+          </div>
+        </div>
+        <div class="joint-list" id="jointList"></div>
+      </aside>
+
+      <main class="viewer-area">
+        <section class="viewport-panel">
+          <div id="viewer"></div>
+          <div class="viewer-overlay">
+            <span>Drag: orbit</span>
+            <span>Scroll: zoom</span>
+            <span>Click joint: curve</span>
+          </div>
+
+          <section id="timelinePanel" class="timeline-panel">
+            <div class="transport">
+              <button id="playButton" type="button">Play</button>
+              <button id="prevFrameButton" class="icon-button" type="button" aria-label="Previous frame">-</button>
+              <div class="slider-field">
+                <label for="frameSlider">Frame</label>
+                <input id="frameSlider" type="range" min="0" max="0" value="0" />
+              </div>
+              <button id="nextFrameButton" class="icon-button" type="button" aria-label="Next frame">+</button>
+              <output id="frameLabel">0 / 0</output>
+              <input id="frameNumber" class="frame-number" type="number" min="0" max="0" value="0" aria-label="Frame number" />
+              <label class="speed">
+                Speed
+                <select id="speedSelect">
+                  <option value="0.25">0.25x</option>
+                  <option value="0.5">0.5x</option>
+                  <option value="1" selected>1x</option>
+                  <option value="2">2x</option>
+                  <option value="4">4x</option>
+                </select>
+              </label>
+              <label class="toggle">
+                <input id="trailToggle" type="checkbox" checked />
+                Trail
+              </label>
+              <label class="toggle">
+                <input id="ballToggle" type="checkbox" checked />
+                Ball
+              </label>
+              <label class="toggle">
+                <input id="orientationToggle" type="checkbox" checked />
+                Orient
+              </label>
+              <label class="speed">
+                Curve
+                <select id="curveModeSelect">
+                  <option value="joint" selected>Joint XYZ</option>
+                  <option value="orient">Root quat</option>
+                </select>
+              </label>
+            </div>
+            <canvas id="curveCanvas" width="1400" height="360"></canvas>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/app.js?v=5"></script>
+  </body>
+</html>

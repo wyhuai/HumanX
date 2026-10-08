@@ -1,0 +1,20 @@
+# @package _global_
+#
+# DAggerBC wiring (quick notes):
+# - Student actor/critic MLP sizes are defined by `algo.config.module_dict.actor/critic.layer_config.hidden_dims`.
+# - Input dims come from `+obs=...` (obs_dict + obs_dims) via `config.robot.algo_obs_dim_dict`.
+# - Teacher actor is built from `algo.config.module_dict.teacher` and loads `teacher_ckpt_path`'s actor weights.
+# - By default we also warm-start the *student critic* from `teacher_ckpt_path` (must match critic architecture).
+#   Set `algo.config.load_teacher_critic=False` to skip loading critic weights (avoids size-mismatch).
+
+defaults:
+  - DAgger
+
+algo:
+  _target_: humanoidverse.agents.dagger.DAggerBC.DAggerBC
+  config:
+    dagger_coef: 1.0
+
+    # If True, warm-start student's critic (and optimizer if present) from teacher_ckpt_path.
+    # Set False to avoid critic size-mismatch when using a teacher with different critic architecture.
+    load_teacher_critic: True

@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>XGen</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/vendor/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-lockup">
+        <div class="brand-mark">X</div>
+        <div>
+          <div class="brand-title">XGen</div>
+          <div class="brand-subtitle">HOI data generator</div>
+        </div>
+      </div>
+      <div class="topbar-center">
+        <span class="status-dot"></span>
+        <span id="workspaceStatus">Loading workspace</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="button subtle" id="resetButton" title="Discard edits for this file">
+          <span class="button-icon">↶</span> Reset
+        </button>
+        <div class="save-stack">
+          <button class="button primary" id="saveButton" title="Save a new edited NPZ copy">
+            <span class="button-icon">⇩</span> Save copy
+          </button>
+          <div class="save-progress" id="saveProgress" hidden role="status" aria-live="polite">
+            <div class="save-progress-track">
+              <div class="save-progress-bar" id="saveProgressBar"></div>
+            </div>
+            <span id="saveProgressLabel">Ready</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="sidebar panel">
+        <div class="panel-heading">
+          <div>
+            <div class="eyebrow">Library</div>
+            <h2>HOI datasets</h2>
+          </div>
+          <button class="icon-button" id="refreshFiles" title="Refresh dataset list" aria-label="Refresh dataset list">⟳</button>
+        </div>
+        <div class="dataset-folder-tools">
+          <label class="select-field folder-select">
+            <span>Dataset folder</span>
+            <select id="folderSelect" aria-label="Dataset folder"></select>
+          </label>
+          <button class="button subtle new-folder-button" id="newFolderButton" title="Create a new dataset folder">
+            <span class="button-icon">＋</span> New folder
+          </button>
+        </div>
+        <label class="search-field">
+          <span>⌕</span>
+          <input id="fileSearch" type="search" placeholder="Filter files">
+        </label>
+        <div class="file-list" id="fileList"></div>
+        <div class="sidebar-note">
+          <span class="note-accent"></span>
+          <div>
+            <strong>Local workspace</strong>
+            <p>Edits stay in memory until you save an edited copy.</p>
+          </div>
+        </div>
+      </aside>
+
+      <section class="main-column">
+        <div class="toolbar panel">
+          <div class="toolbar-title">
+            <div class="eyebrow">Trajectory</div>
+            <h1 id="trajectoryTitle">Select a dataset</h1>
+          </div>
+          <div class="toolbar-controls">
+            <div class="segmented" aria-label="View mode">
+              <button class="segment active" data-view="orbit">Orbit</button>
+              <button class="segment" data-view="top">Top</button>
+              <button class="segment" data-view="front">Front</button>
+            </div>
+            <button class="button subtle ground-color-button" id="groundColorButton" title="Cycle ground color" aria-label="Cycle ground color">
+              <span class="ground-color-swatch" id="groundColorSwatch"></span>
+              <span>Ground</span>
+            </button>
+            <label class="grounding-toggle" title="Preview a smoothed vertical correction during supported phases">
+              <input id="groundingCorrectionToggle" type="checkbox">
+              <span>Grounding correction</span>
+            </label>
+            <button class="icon-button" id="fitView" title="Fit scene to view" aria-label="Fit scene to view">⌗</button>
+          </div>
+        </div>
+
+        <div class="viewport-panel panel">
+          <div id="sceneCanvas" aria-label="HOI 3D scene visualization"></div>
+          <div class="viewport-overlay">
+            <div class="scene-legend">
+              <span><i class="legend-swatch robot"></i>G1</span>
+              <span><i class="legend-swatch object"></i>Object</span>
+              <span><i class="legend-swatch table"></i>Tables</span>
+            </div>
+            <div class="scene-hint">Drag canvas to orbit · drag joints, orange object, or active trajectory handle</div>
+          </div>
+          <div class="scene-readout">
+            <span class="readout-label">FRAME</span>
+            <strong id="sceneFrame">--</strong>
+            <span class="readout-divider"></span>
+            <span id="sceneTime">--</span>
+          </div>
+        </div>
+
+        <div class="timeline-panel panel">
+          <div class="timeline-head">
+            <div class="timeline-title">
+              <span class="eyebrow">Timeline</span>
+              <strong id="timelineSummary">--</strong>
+            </div>
+            <div class="playback-actions">
+              <button class="button subtle crop-button" id="cropButton" title="Save the selected time range as a new NPZ copy">
+                <span class="button-icon">⤢</span> Crop copy
+              </button>
+              <button class="icon-button" id="stepBack" title="Previous frame" aria-label="Previous frame">‹</button>
+              <button class="play-button" id="playButton" title="Play trajectory" aria-label="Play trajectory">▶</button>
+              <button class="icon-button" id="stepForward" title="Next frame" aria-label="Next frame">›</button>
+              <label class="number-field compact">
+                <span>Frame</span>
+                <input id="frameInput" type="number" min="0" value="0">
+              </label>
+            </div>
+          </div>
+          <div class="timeline-track-wrap">
+            <div class="timebar" id="timebar">
+              <div class="timebar-crop-window" id="timelineCropWindow"></div>
+              <div class="timebar-contact" id="timelineContact"></div>
+              <div class="timebar-progress" id="timelineProgress"></div>
+              <div class="timebar-thumb" id="timelineThumb"></div>
+              <div class="timebar-crop-handle start" id="timelineCropStart" data-crop-side="start" role="slider" aria-label="Crop start"></div>
+              <div class="timebar-crop-handle end" id="timelineCropEnd" data-crop-side="end" role="slider" aria-label="Crop end"></div>
+            </div>
+            <input id="timelineSlider" type="range" min="0" max="1" value="0" step="1" aria-label="Current frame">
+          </div>
+          <div class="timeline-foot">
+            <span id="startTime">0.00 s</span>
+            <span class="timeline-key"><i class="legend-swatch contact"></i>contact</span>
+            <span class="timeline-key crop-key" id="cropSummary">keep 0–--</span>
+            <span id="endTime">--</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="inspector panel">
+        <div class="inspector-head">
+          <div>
+            <div class="eyebrow">Inspector</div>
+            <h2>Frame data</h2>
+          </div>
+          <span class="dirty-badge" id="dirtyBadge" hidden>Edited</span>
+        </div>
+        <div class="inspector-tabs">
+          <button class="inspector-tab active" data-tab="frame">Frame</button>
+          <button class="inspector-tab" data-tab="joints">Joints <span id="jointCount">29</span></button>
+          <button class="inspector-tab" data-tab="object">Object config</button>
+          <button class="inspector-tab" data-tab="synthesis">Synthesis</button>
+        </div>
+
+        <div class="tab-content active" id="tab-frame">
+          <div class="metric-grid">
+            <div class="metric-card">
+              <span>Frame</span>
+              <strong id="metricFrame">--</strong>
+            </div>
+            <div class="metric-card">
+              <span>Time</span>
+              <strong id="metricTime">--</strong>
+            </div>
+            <div class="metric-card">
+              <span>FPS</span>
+              <strong id="metricFps">--</strong>
+            </div>
+            <div class="metric-card">
+              <span>Contacts</span>
+              <strong id="metricContacts">--</strong>
+            </div>
+          </div>
+          <div class="data-section">
+            <div class="section-label">Root position · world</div>
+            <div class="vector-row" id="rootVector"></div>
+          </div>
+          <div class="data-section">
+            <div class="section-label">End effectors</div>
+            <div class="ee-list" id="eeList"></div>
+          </div>
+          <div class="data-section">
+            <div class="section-label">Contact flags</div>
+            <div class="contact-list" id="contactList"></div>
+          </div>
+          <div class="data-section">
+            <div class="section-label">Grounding correction</div>
+            <div class="grounding-readout" id="groundingReadout">Off</div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-joints">
+          <div class="editor-intro">
+            <span class="intro-icon">↕</span>
+            <div>
+              <strong>Pose at current frame</strong>
+              <p>Adjust a joint and the preview updates immediately.</p>
+            </div>
+          </div>
+          <div class="joint-filter-row">
+            <label class="search-field">
+              <span>⌕</span>
+              <input id="jointSearch" type="search" placeholder="Search joints">
+            </label>
+            <select id="jointGroup" aria-label="Joint group">
+              <option value="all">All groups</option>
+              <option value="left">Left side</option>
+              <option value="right">Right side</option>
+              <option value="waist">Waist</option>
+            </select>
+          </div>
+          <div class="joint-list" id="jointList"></div>
+        </div>
+
+        <div class="tab-content" id="tab-object">
+          <div class="editor-intro orange">
+            <span class="intro-icon">□</span>
+            <div>
+              <strong>Object configuration</strong>
+              <p>Edit the object position, orientation, and geometry for this frame. Drag it in the viewport for XY translation.</p>
+            </div>
+          </div>
+          <label class="select-field stacked object-anchor-field">
+            <span>Anchor</span>
+            <select id="objectAnchorMode">
+              <option value="palm_center">Palm center midpoint</option>
+              <option value="right_palm_normal">Right palm normal +5cm</option>
+            </select>
+          </label>
+          <label class="select-field stacked object-type-field">
+            <span>Geometry</span>
+            <select id="objectType">
+              <option value="box">Box</option>
+              <option value="sphere">Sphere</option>
+            </select>
+          </label>
+          <div class="object-size-row">
+            <label class="select-field stacked object-size-mode-field">
+              <span>Size mode</span>
+              <select id="objectSizeMode">
+                <option value="auto">Auto · wrist span</option>
+                <option value="manual">Manual</option>
+              </select>
+            </label>
+            <label class="number-field stacked object-size-field">
+              <span id="objectSizeLabel">Object size · m</span>
+              <input id="objectSizeInput" type="number" min="0.02" step="0.001" value="0.28" aria-label="Object size in meters">
+            </label>
+          </div>
+          <div class="transform-section">
+            <div class="section-label">Position · world</div>
+            <div class="transform-grid" id="objectPositionFields"></div>
+          </div>
+          <div class="transform-section">
+            <div class="section-label">Quaternion · wxyz</div>
+            <div class="transform-grid quaternion" id="objectQuaternionFields"></div>
+          </div>
+          <label class="toggle-row">
+            <input id="yawOnlyToggle" type="checkbox">
+            <span>Keep horizontal · yaw only</span>
+          </label>
+          <label class="toggle-row">
+            <input id="supportSurfacesToggle" type="checkbox">
+            <span>Generate support surfaces</span>
+          </label>
+          <div class="transform-section">
+            <div class="section-label">Rotate object</div>
+            <div class="rotation-tools">
+              <label class="number-field compact">
+                <span>Step</span>
+                <input id="rotationStepInput" type="number" min="0.1" max="45" step="0.5" value="5">
+              </label>
+              <div class="rotation-grid">
+                <button class="icon-button" data-rotate-axis="x" data-rotate-dir="-1" title="Rotate -X" aria-label="Rotate -X">↺X</button>
+                <button class="icon-button" data-rotate-axis="x" data-rotate-dir="1" title="Rotate +X" aria-label="Rotate +X">↻X</button>
+                <button class="icon-button" data-rotate-axis="y" data-rotate-dir="-1" title="Rotate -Y" aria-label="Rotate -Y">↺Y</button>
+                <button class="icon-button" data-rotate-axis="y" data-rotate-dir="1" title="Rotate +Y" aria-label="Rotate +Y">↻Y</button>
+                <button class="icon-button" data-rotate-axis="z" data-rotate-dir="-1" title="Rotate -Z" aria-label="Rotate -Z">↺Z</button>
+                <button class="icon-button" data-rotate-axis="z" data-rotate-dir="1" title="Rotate +Z" aria-label="Rotate +Z">↻Z</button>
+              </div>
+            </div>
+          </div>
+          <div class="object-meta">
+            <span>Selected object</span>
+            <strong id="objectTypeSummary">box</strong>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-synthesis">
+          <div class="editor-intro synth">
+            <span class="intro-icon">◎</span>
+            <div>
+              <strong>HOI synthesis</strong>
+              <p>Mark one continuous contact phase, tune the box at contact start, then save a full HOI copy.</p>
+            </div>
+          </div>
+          <div class="synth-grid">
+            <label class="number-field stacked">
+              <span>Contact start</span>
+              <input id="contactStartInput" type="number" min="0" value="0">
+            </label>
+            <label class="number-field stacked">
+              <span>Contact end</span>
+              <input id="contactEndInput" type="number" min="0" value="0">
+            </label>
+          </div>
+          <div class="synth-actions">
+            <button class="button subtle" id="markStartButton" title="Use current frame as contact start">Mark start</button>
+            <button class="button subtle" id="markEndButton" title="Use current frame as contact end">Mark end</button>
+            <button class="button subtle" id="goStartButton" title="Jump to contact start">Go start</button>
+            <button class="button subtle" id="alignBoxButton" title="Align object to palm center at current frame">Align object</button>
+          </div>
+          <label class="select-field stacked synth-mode-field">
+            <span>Pre-contact trajectory</span>
+            <select id="preContactMode">
+              <option value="hold">Hold still</option>
+              <option value="parabolic">Inverted parabolic</option>
+            </select>
+          </label>
+          <label class="select-field stacked synth-mode-field">
+            <span>Post-contact trajectory</span>
+            <select id="postContactMode">
+              <option value="hold">Hold still</option>
+              <option value="parabolic">Parabolic throw</option>
+            </select>
+          </label>
+          <div class="synth-optimize-actions">
+            <button class="button subtle" id="optimizeContactButton" title="Optimize the contact stage and preview the result">Optimize contact stage</button>
+            <button class="button subtle" id="restoreContactButton" title="Restore the original robot motion">Restore original</button>
+          </div>
+          <div class="synth-summary" id="synthSummary"></div>
+          <div class="save-stack wide-save-stack">
+            <button class="button primary wide" id="synthesizeButton" title="Save synthesized full HOI NPZ copy">
+              <span class="button-icon">⇩</span> Save synthesized HOI
+            </button>
+            <div class="save-progress" id="synthesizeProgress" hidden role="status" aria-live="polite">
+              <div class="save-progress-track">
+                <div class="save-progress-bar" id="synthesizeProgressBar"></div>
+              </div>
+              <span id="synthesizeProgressLabel">Ready</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

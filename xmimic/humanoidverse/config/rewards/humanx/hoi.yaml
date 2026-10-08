@@ -1,0 +1,141 @@
+# @package _global_
+
+# defaults:
+#   - reward_base
+
+rewards:
+  set_reward: wyh
+  set_reward_date: 20250827
+  only_positive_rewards: False
+  # if False, ignore yaw (rotation about world Z) when computing ball_rotation reward
+  ball_rotation_consider_yaw: True
+  reward_scales:
+      teleop_body_position_extend: 1.0
+      teleop_vr_3point: 1.6
+      teleop_body_position_feet: 2.1
+      teleop_body_rotation_extend: 0.5
+      teleop_body_ang_velocity_extend: 0.5
+      teleop_body_velocity_extend: 1.0
+      teleop_joint_position: 0.75
+      teleop_joint_velocity: 0.5
+      penalty_torques: -0.00001
+      # penalty_dof_vel: -0.0001
+      # penalty_dof_acc: -2.5e-8
+      penalty_action_rate: -0.5 # need to be tuned up to -0.5 for real robot
+      # penalty_feet_contact_forces: -0.01
+      # penalty_stumble: -10.0
+
+      ig_extended_hand: 2.0
+      waist_dof: -50 #-100. #5.0
+      hip_yaw_dof: -20 # for penalize hip yaw dof
+      ball_position: 2.0 #3.0
+      ball_rotation: 0.0
+      ball_velocity: 0.0
+      ball_spin_axis_alignment: 0.0
+      penalty_ball_spin_axis_alignment: 0.0
+      interaction_graph: 2.0 #1.0
+      contact_graph: 2.1 #0.5
+      # contact_graph_feet: 15.0 #0.5
+      
+      # better for landing
+      penalty_feet_ori: -2.0
+      feet_heading_alignment: -0.02 #-0.1
+      penalty_slippage: -2.0
+
+      limits_dof_pos: -10.0 #-10.0
+      limits_dof_vel: -5.0 #-5.0
+      limits_torque: -5. #-2.0 #-5.0
+      termination: -200.0 #-200.0
+      # feet_max_height_for_this_air: -100.0
+      penalty_both_feet_air: 0.0         # penalize double-float (both feet airborne)
+      
+  multiplicative_reward: [] # [ig_extended_hand, ball_position, interaction_graph]
+  object_related_rewards: [ig_extended_hand, ball_position, ball_rotation, ball_velocity, interaction_graph, contact_graph]
+  teleop_body_pos_lowerbody_weight : 1.0 # wyh
+  teleop_body_pos_upperbody_weight : 1.0
+
+  desired_feet_max_height_for_this_air: 0.2
+
+  feet_contact_force_z_threshold: 1.0   # N, contact detection for feet masks (used with contact_filt)
+  feet_stance_z_ema: 0.05              # EMA for stance z baseline while in contact_filt
+
+  reward_tracking_sigma:
+    teleop_upper_body_pos: 0.03
+    teleop_lower_body_pos: 0.1
+    teleop_vr_3point_pos: 0.03
+    teleop_feet_pos: 0.03
+
+    teleop_body_rot: 1.0
+    teleop_body_vel: 1.0
+    teleop_body_ang_vel: 1.0
+    teleop_joint_pos: 1.0
+    teleop_joint_vel: 1.0
+
+    ig_extended_hand: 0.05
+    waist_dof: 0.05
+    hip_yaw_dof: 0.05
+    ball_position: 0.05
+    ball_rotation: 0.05
+    ball_velocity: 0.05
+    ball_spin_axis_alignment: 0.2
+    interaction_graph: 0.05
+    contact_graph: 0.05
+    contact_graph_feet: 0.05
+
+
+
+  # locomotion_max_contact_force: 200.0
+  # desired_feet_max_height_for_this_air: 0.2
+
+  reward_penalty_curriculum: False
+  reward_initial_penalty_scale : 0.10
+  reward_min_penalty_scale: 0.0
+  reward_max_penalty_scale: 1.0
+  reward_penalty_level_down_threshold: 20
+  reward_penalty_level_up_threshold: 22 # shortest motion in TairanTestbed is 92, therefore 46 is the middle point, we set 42 here for curriculum learning level up
+  reward_penalty_degree: 0.00001 # 0.00001
+  num_compute_average_epl: 10000
+
+  reward_limit:
+    soft_dof_pos_limit: 0.9
+    soft_dof_vel_limit: 0.9
+    soft_torque_limit: 0.825
+
+    reward_limits_curriculum:
+      soft_dof_pos_curriculum: True
+      soft_dof_pos_initial_limit: 0.95
+      soft_dof_pos_max_limit: 0.96
+      soft_dof_pos_min_limit: 0.9
+      soft_dof_pos_curriculum_degree: 0.00000025
+      soft_dof_pos_curriculum_level_down_threshold: 20
+      soft_dof_pos_curriculum_level_up_threshold: 22
+
+      soft_dof_vel_curriculum: True
+      soft_dof_vel_initial_limit: 0.96
+      soft_dof_vel_max_limit: 0.98
+      soft_dof_vel_min_limit: 0.95
+      soft_dof_vel_curriculum_degree: 0.00000025
+      soft_dof_vel_curriculum_level_down_threshold: 20
+      soft_dof_vel_curriculum_level_up_threshold: 22
+
+      soft_torque_curriculum: True
+      soft_torque_initial_limit: 0.95
+      soft_torque_max_limit: 0.96
+      soft_torque_min_limit: 0.85
+      soft_torque_curriculum_degree: 0.00000025
+      soft_torque_curriculum_level_down_threshold: 20
+      soft_torque_curriculum_level_up_threshold: 22
+
+  reward_penalty_reward_names: [
+    "penalty_torques",
+    "penalty_dof_acc",
+    "penalty_dof_vel",
+    "penalty_action_rate",
+    "penalty_ball_spin_axis_alignment",
+    "limits_dof_pos",
+    "limits_dof_vel",
+    "limits_torque",
+    "feet_heading_alignment",
+    "penalty_feet_ori",
+    "penalty_slippage",
+    "penalty_both_feet_air"]

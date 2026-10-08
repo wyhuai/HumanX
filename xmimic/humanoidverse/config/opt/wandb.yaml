@@ -1,0 +1,11 @@
+# @package _global_
+
+use_wandb: True
+
+wandb:
+  wandb_project: null
+  wandb_tags: 'online' # 'online' or 'offline' or 'disabled'
+  wandb_group: null
+  wandb_id: null
+  wandb_entity: agileh2o
+  wandb_dir: ${experiment_dir}/.wandb

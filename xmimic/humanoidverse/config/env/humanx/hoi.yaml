@@ -1,0 +1,158 @@
+# @package _global_
+
+defaults:
+  - /env/legged_base
+
+# Env structure
+env:
+  _target_: humanoidverse.envs.humanx.hoi.LeggedRobotMotionTrackingHOI
+  config:
+    max_episode_length_s: 20
+    termination:
+      terminate_by_contact: False #False #terminate_after_contacts_on : ["pelvis", "hip_pitch", "knee"]
+      terminate_by_contact_p: 1.0
+      terminate_by_gravity: True
+      terminate_by_low_height: False
+      terminate_when_motion_end: True
+      terminate_when_motion_far: True
+      terminate_by_low_obj_height: False
+      terminate_when_ball_status_far: True #False
+      terminate_when_ball_status_far_p: 0.01
+      # optional: also terminate when ball rotation deviates too much from reference
+      terminate_when_ball_rotation_far: False
+      terminate_when_ball_rotation_far_p: 0.01
+      # if False, ignore yaw (rotation about world Z) when computing ball rotation termination
+      terminate_when_ball_rotation_far_consider_yaw: False
+      terminate_when_ball_z_far: False
+      terminate_when_heading_deviate: False
+      terminate_when_close_to_dof_pos_limit: False
+      terminate_when_close_to_dof_vel_limit: False
+      terminate_when_close_to_torque_limit: False
+      terminate_when_ig_status_far: False
+      terminate_when_ig_status_far_p: 0.01
+      termination_body_height: False
+      termination_body_height_p: 0.02
+      contact_conditioned_ig_termination: False
+      contact_conditioned_ig_termination_p: 0.02
+    termination_scales:
+      termination_min_base_height : 0.2
+      termination_gravity_x : 0.8
+      termination_gravity_y : 0.8
+      termination_motion_far_threshold : 1.5
+      termination_close_to_dof_pos_limit : 0.98
+      termination_close_to_dof_vel_limit : 0.98
+      termination_close_to_torque_limit : 0.98
+      termination_ball_status_far_threshold : 0.5
+      # relative rotation angle threshold (radians), computed from dif_global_ball_rot via 2*acos(|w|)
+      termination_ball_rotation_far_threshold : 0.7
+      termination_min_obj_height: 0.2
+      termination_heading_deviate_scale: 0.8
+      termination_ig_status_far_threshold: 0.2
+      termination_ball_z_far_threshold: 0.25
+      termination_body_height_scale: 0.1
+      contact_conditioned_ig_terminate_threshold: 0.2
+    termination_probality:
+      terminate_when_close_to_dof_pos_limit: 0.25
+      terminate_when_close_to_dof_vel_limit: 0.25
+      terminate_when_close_to_torque_limit: 0.25
+    termination_curriculum:
+      #motion
+      terminate_when_motion_far_curriculum: True
+      terminate_when_motion_far_initial_threshold: 1.5
+      terminate_when_motion_far_threshold_max: 2.0
+      terminate_when_motion_far_threshold_min: 0.5
+      terminate_when_motion_far_curriculum_degree: 0.000025
+      terminate_when_motion_far_curriculum_level_down_threshold: 24
+      terminate_when_motion_far_curriculum_level_up_threshold: 26
+      #interaction
+      terminate_when_ball_status_far_curriculum: False
+      terminate_when_ball_status_far_initial_threshold: 0.5
+      terminate_when_ball_status_far_threshold_max: 0.5
+      terminate_when_ball_status_far_threshold_min: 0.5
+      terminate_when_ball_status_far_curriculum_degree: 0.
+      terminate_when_ball_status_far_curriculum_level_down_threshold: 24
+      terminate_when_ball_status_far_curriculum_level_up_threshold: 26
+    termination_misc:
+      selected_contact_conditioned_ig_termination_bodies: ["right_hand_link", "left_hand_link"]
+
+    resample_motion_when_training: False
+    resample_time_interval_s: 2000
+
+    noise_to_initial_level: 1.0
+    init_noise_scale: 
+      dof_pos: 0.1
+      dof_vel: 0.01
+      root_pos: 0.02
+      root_rot: 10. #10 # degree, * 3.14 / 180
+      root_rot_yaw: 0. # degree, * 3.14 / 180 (yaw-only, can coexist with root_rot)
+      root_vel: 0.05
+      root_ang_vel: 0.02
+      obj_pos: 0.1  # object position noise
+
+    use_teleop_control: False
+    enforce_randomize_motion_start_eval: False
+
+    #wyh
+    enable_rsi: True
+    zero_obj_vel_init: False
+    zero_obj_ang_vel_init: False
+    zero_root_vel_init: False
+    clip_phase_to_standframe: False
+    visualize_motion_data_only: False
+
+    #state delay init
+    enable_state_delay_init: False
+    state_delay_init_prob: 0.5
+    state_delay_init_interval_f: [1, 15]  # in frame
+    # which entity to apply reset-time delay to: "both" (default), "robot", or "object"
+    state_delay_init_target: "both"
+    
+    #zqh
+    # Motion start frame/time controls.
+    use_custom_motion_start: False  # Whether to use a custom motion start time/frame.
+    motion_start_time: ~  # Motion start time in seconds (0.0 means start from the beginning).
+    motion_start_frame: ~   # Motion start frame index (0 means the first frame).
+    # Contact detection and logging controls (x/y force components only).
+    enable_contact_logging: False  # Whether to enable printing names of contact bodies.
+    contact_force_threshold: 0.1   # Horizontal contact-force threshold for contact detection.
+    log_contact_frequency: 1       # Print contact info every N frames (1 means every frame).
+    # adaptive sampling
+    enable_adaptive_sampling: False
+    adaptive_sampling_alpha: 5.0
+    adaptive_sampling_eps: 1e-4
+    adaptive_sampling_ema_beta: 0.9
+
+    # object pose packet loss simulation
+    packet_loss:
+      enable: False
+      dist_threshold_range: [0.05, 0.1]  # Fixed threshold 0.5m for verification
+      prob_far: 0.02   # Packet loss probability when far
+      prob_near: 0.20  # Packet loss probability when near
+      len_range_far: [1, 2]
+      len_range_near: [1, 10]  # Packet loss duration range in frames
+      # Case: when object-hand-center distance is larger than this threshold,
+      # use an independent probability + duration range. Configure it to NOT overlap with `dist_threshold_range`.
+      dist_threshold_very_far: null
+      prob_very_far: null
+      len_range_very_far: null
+      # Case(highest priority): when abs(object global z) is larger than this threshold,
+      # use an independent probability + duration range. May overlap with other cases.
+      ground_abs_dist_threshold: null
+      prob_ground: null
+      len_range_ground: null
+      mask_type: "zero"  # "zero" or "root"
+
+# Globally accessible parameters
+log_task_name: motion_tracking
+
+eval_overrides:
+  env:
+    config: 
+      max_episode_length_s: 100000
+
+debug_termination:
+  enabled: true
+  only_when_evaluating: true
+  print_per_reset: true
+  print_every_n_steps: 1
+  max_print_envs: 5
