@@ -12,8 +12,9 @@
 [English](README.md) | [简体中文](README.zh-CN.md)
 </div>
 
----
+<img width="1083" height="427" alt="image" src="https://github.com/user-attachments/assets/396f92ca-cebb-44ce-b3a3-bf89c073cf5f" />
 
+---
 
 # What You Can Reproduce
 
