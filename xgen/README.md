@@ -27,10 +27,10 @@ as an example input.
 From the `xgen` directory, install the required Python packages:
 
 ```bash
-python -m pip install numpy mujoco joblib
+python -m pip install numpy "mujoco>=3.15" joblib
 ```
 
-XGen requires Python 3 and a desktop browser with WebGL support. No Node.js
+XGen requires Python 3.10+ and a desktop browser with WebGL support. No Node.js
 installation or frontend build step is required.
 
 ### Launch XGen

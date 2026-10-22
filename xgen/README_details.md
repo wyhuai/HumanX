@@ -58,12 +58,12 @@ xgen/
 
 ## Requirements
 
-- Python 3;
+- Python 3.10+;
 - A desktop browser with WebGL support;
 - The following Python packages:
 
 ```bash
-python -m pip install numpy mujoco
+python -m pip install numpy "mujoco>=3.15"
 ```
 
 To convert `.pkl` files, also install:
