@@ -1300,33 +1300,35 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
         # Note: motion_lib already applies env origin offset when offset is provided.
         if ref_basket_pos.ndim == 1:
             ref_basket_pos = ref_basket_pos.unsqueeze(0)
-        self._debug_basket_pos_world[:] = ref_basket_pos
-        # Check if basket_pos is valid (non-zero). If data doesn't have basket_pos, motion_lib returns zeros.
-        self._has_valid_basket_pos[:] = ref_basket_pos.norm(dim=-1) > 1e-6
-        human_joints = motion_res.get("human_joints", None)
-        human_joints_valid = motion_res.get("human_joints_valid", None)
-        human_root_rot = motion_res.get("human_root_rot", None)
-        human_root_rot_valid = motion_res.get("human_root_rot_valid", None)
-        if (
-            human_joints is not None
-            and human_joints.ndim == 3
-            and human_joints.shape[1] == self._debug_human_joints_world.shape[1]
-        ):
-            self._debug_human_joints_world[:] = human_joints
-            if human_root_rot is not None and human_root_rot_valid is not None:
-                aligned_human_joints = self._motion_lib._align_human_joints_heading_to_target(
-                    human_joints,
-                    human_root_rot,
-                    self.ref_root_rot,
-                )
-                valid_root_rot = human_root_rot_valid.to(torch.bool).view(-1)
-                self._debug_human_joints_world[valid_root_rot] = aligned_human_joints[valid_root_rot]
-            if human_joints_valid is None:
-                self._has_valid_human_joints[:] = human_joints.shape[1] > 0
+        # These buffers are only read by the viewer's debug drawing.  In headless
+        # training, computing and boolean-indexing them adds device synchronization.
+        if self.viewer and self.debug_viz:
+            self._debug_basket_pos_world[:] = ref_basket_pos
+            self._has_valid_basket_pos[:] = ref_basket_pos.norm(dim=-1) > 1e-6
+            human_joints = motion_res.get("human_joints", None)
+            human_joints_valid = motion_res.get("human_joints_valid", None)
+            human_root_rot = motion_res.get("human_root_rot", None)
+            human_root_rot_valid = motion_res.get("human_root_rot_valid", None)
+            if (
+                human_joints is not None
+                and human_joints.ndim == 3
+                and human_joints.shape[1] == self._debug_human_joints_world.shape[1]
+            ):
+                self._debug_human_joints_world[:] = human_joints
+                if human_root_rot is not None and human_root_rot_valid is not None:
+                    aligned_human_joints = self._motion_lib._align_human_joints_heading_to_target(
+                        human_joints,
+                        human_root_rot,
+                        self.ref_root_rot,
+                    )
+                    valid_root_rot = human_root_rot_valid.to(torch.bool).view(-1)
+                    self._debug_human_joints_world[valid_root_rot] = aligned_human_joints[valid_root_rot]
+                if human_joints_valid is None:
+                    self._has_valid_human_joints[:] = human_joints.shape[1] > 0
+                else:
+                    self._has_valid_human_joints[:] = human_joints_valid.to(torch.bool)
             else:
-                self._has_valid_human_joints[:] = human_joints_valid.to(torch.bool)
-        else:
-            self._has_valid_human_joints[:] = False
+                self._has_valid_human_joints[:] = False
 
         # Optional per-motion scalar (e.g. jumpshot apex height). Broadcast as (num_envs, 1).
         apex_height = motion_res.get("apex_height", None)
