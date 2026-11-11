@@ -720,7 +720,7 @@ class MotionLibRobotHOI(MotionLibBase):
             writer.add_scalar('AdaptiveSampling/frames_with_data', 
                              frames_with_data, global_step=global_step)
     
-    def get_motion_state(self, motion_ids, motion_times, curr_time, offset=None):
+    def get_motion_state(self, motion_ids, motion_times, curr_time, offset=None, *, include_unique_skill_labels=True):
         
         #base info
         motion_len = self._motion_lengths[motion_ids]
@@ -869,7 +869,7 @@ class MotionLibRobotHOI(MotionLibBase):
         
         #skill label
         skill_label = self.skill_label[f0l]
-        unique_skill_labels = torch.unique(skill_label, dim=0)
+        unique_skill_labels = torch.unique(skill_label, dim=0) if include_unique_skill_labels else None
         
         #ref origin pos
         if offset is not None:
@@ -928,7 +928,9 @@ class MotionLibRobotHOI(MotionLibBase):
                     + blend_exp * human_joints1
                     + offset[..., None, :]
                 )
-            human_root_rot = slerp(human_root_rot0, human_root_rot1, blend_exp)
+            # Root quaternions have shape (N, 4), unlike body rotations
+            # (N, B, 4).  A (N, 1, 1) blend broadcasts to (N, N, 4).
+            human_root_rot = slerp(human_root_rot0, human_root_rot1, blend)
         else:
             human_joints = torch.zeros((motion_ids.shape[0], 0, 3), device=self._device, dtype=torch.float32)
             human_root_rot = torch.zeros((motion_ids.shape[0], 4), device=self._device, dtype=torch.float32)

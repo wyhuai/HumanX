@@ -91,7 +91,7 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
         ).unsqueeze(0).repeat(env_ids.shape[0], 1)
         self.simulator.support_root_state[env_ids, 7:13] = 0.0
 
-    def _reset_support_asset_states(self, env_ids: torch.Tensor, motion_res_obj: dict):
+    def _reset_support_asset_states(self, env_ids: torch.Tensor, motion_res_obj: dict, *, selected_rows=False):
         if not hasattr(self.simulator, "support_root_state"):
             return
         self._park_support_asset_states(env_ids)
@@ -101,11 +101,12 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
             return
         if need_support.ndim > 1:
             need_support = need_support.squeeze(-1)
-        support_env_ids = env_ids[need_support[env_ids].to(torch.bool)]
+        support_mask = need_support.to(torch.bool) if selected_rows else need_support[env_ids].to(torch.bool)
+        support_env_ids = env_ids[support_mask]
         if support_env_ids.numel() == 0:
             return
         support_center = support_top_to_world_center(
-            support_top_pos[support_env_ids],
+            support_top_pos[support_mask] if selected_rows else support_top_pos[support_env_ids],
             self.env_origins[support_env_ids],
             thickness=float(getattr(self.simulator, "support_box_thickness", 0.02)),
         )
@@ -1244,13 +1245,52 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
         # motion_res = self._get_state_from_motionlib_cache_trimesh(self.motion_ids, motion_times, offset= offset)
 
     def resample_motion(self):
+        # Resampling replaces reference data for every environment, including
+        # those that did not reset during this step.
+        self._observation_motion_cache = None
+        self._observation_amp_motion_cache = None
         self._motion_lib.load_motions(random_sample=True)
         if getattr(self, "_amp_motion_lib", None) is not None:
             self._amp_motion_lib.load_motions(random_sample=True)
         self.reset_envs_idx(torch.arange(self.num_envs, device=self.device))
 
 
-    def _pre_compute_observations_callback(self):
+    def _observation_motion_state(self, motion_lib, motion_times, now_time, offset, cache_name, refresh_env_ids):
+        """Optionally update reference-motion rows for reset environments only.
+
+        The observation computations and their stateful side effects still run
+        for all environments.  This cache is used only within one physics step.
+        """
+        # Some visualization-only motion fields are not per-environment tensors.
+        # Keep the original full query whenever debug drawing is enabled.
+        cache_enabled = bool(getattr(self.config, "partial_motion_refresh", False)) and not (self.viewer and self.debug_viz)
+        cached = getattr(self, cache_name, None) if cache_enabled else None
+        if refresh_env_ids is not None and cached is not None:
+            rows = motion_lib.get_motion_state(
+                self.motion_ids[refresh_env_ids], motion_times[refresh_env_ids],
+                now_time[refresh_env_ids], offset=offset[refresh_env_ids], include_unique_skill_labels=False,
+            )
+            for name, values in cached.items():
+                values.index_copy_(0, refresh_env_ids, rows[name])
+            return cached
+
+        result = motion_lib.get_motion_state(
+            self.motion_ids, motion_times, now_time, offset=offset, include_unique_skill_labels=False
+        )
+        if cache_enabled:
+            # Exclude aggregate fields such as unique_skill_labels.  Only these
+            # per-environment fields are read by the callback below.
+            names = (
+                "rg_pos_t", "body_vel_t", "rg_rot_t", "body_ang_vel_t", "dof_pos", "dof_vel",
+                "root_pos", "root_rot", "basket_pos", "skill_label", "ref_origin_pos", "ref_origin_rot",
+                "apex_height",
+                "curr_obj_pos", "curr_obj_rot", "curr_obj_vel", "next_obj_pos", "ball_contact",
+                "lfoot_contact", "rfoot_contact",
+            )
+            setattr(self, cache_name, {name: result[name] for name in names})
+        return result
+
+    def _pre_compute_observations_callback(self, refresh_env_ids=None):
         super()._pre_compute_observations_callback()
         
         offset = self.env_origins
@@ -1258,7 +1298,9 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
         motion_times = (self.episode_length_buf + 1) * self.dt + self.motion_start_times # next frames so +1
         now_time = self.episode_length_buf * self.dt + self.motion_start_times 
         # motion_res = self._get_state_from_motionlib_cache_trimesh(self.motion_ids, motion_times, offset= offset)
-        motion_res = self._motion_lib.get_motion_state(self.motion_ids, motion_times, now_time, offset=offset)
+        motion_res = self._observation_motion_state(
+            self._motion_lib, motion_times, now_time, offset, "_observation_motion_cache", refresh_env_ids
+        )
         #robot status
         ref_body_pos_extend = motion_res["rg_pos_t"]
         self.ref_body_pos_extend[:] = ref_body_pos_extend # for visualization and analysis
@@ -1276,7 +1318,9 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
         if getattr(self, "_amp_motion_lib", None) is not None:
             amp_motion_times = (self.episode_length_buf + 1) * self.dt + self.amp_motion_start_times
             amp_now_time = self.episode_length_buf * self.dt + self.amp_motion_start_times
-            amp_motion_res = self._amp_motion_lib.get_motion_state(self.motion_ids, amp_motion_times, amp_now_time, offset=offset)
+            amp_motion_res = self._observation_motion_state(
+                self._amp_motion_lib, amp_motion_times, amp_now_time, offset, "_observation_amp_motion_cache", refresh_env_ids
+            )
             amp_ref_body_pos_extend = amp_motion_res["rg_pos_t"]
             amp_ref_body_vel_extend = amp_motion_res["body_vel_t"]
             self.amp_expert_dof_pos = amp_motion_res["dof_pos"]
@@ -1300,33 +1344,35 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
         # Note: motion_lib already applies env origin offset when offset is provided.
         if ref_basket_pos.ndim == 1:
             ref_basket_pos = ref_basket_pos.unsqueeze(0)
-        self._debug_basket_pos_world[:] = ref_basket_pos
-        # Check if basket_pos is valid (non-zero). If data doesn't have basket_pos, motion_lib returns zeros.
-        self._has_valid_basket_pos[:] = ref_basket_pos.norm(dim=-1) > 1e-6
-        human_joints = motion_res.get("human_joints", None)
-        human_joints_valid = motion_res.get("human_joints_valid", None)
-        human_root_rot = motion_res.get("human_root_rot", None)
-        human_root_rot_valid = motion_res.get("human_root_rot_valid", None)
-        if (
-            human_joints is not None
-            and human_joints.ndim == 3
-            and human_joints.shape[1] == self._debug_human_joints_world.shape[1]
-        ):
-            self._debug_human_joints_world[:] = human_joints
-            if human_root_rot is not None and human_root_rot_valid is not None:
-                aligned_human_joints = self._motion_lib._align_human_joints_heading_to_target(
-                    human_joints,
-                    human_root_rot,
-                    self.ref_root_rot,
-                )
-                valid_root_rot = human_root_rot_valid.to(torch.bool).view(-1)
-                self._debug_human_joints_world[valid_root_rot] = aligned_human_joints[valid_root_rot]
-            if human_joints_valid is None:
-                self._has_valid_human_joints[:] = human_joints.shape[1] > 0
+        # These buffers are only read by the viewer's debug drawing.  In headless
+        # training, computing and boolean-indexing them adds device synchronization.
+        if self.viewer and self.debug_viz:
+            self._debug_basket_pos_world[:] = ref_basket_pos
+            self._has_valid_basket_pos[:] = ref_basket_pos.norm(dim=-1) > 1e-6
+            human_joints = motion_res.get("human_joints", None)
+            human_joints_valid = motion_res.get("human_joints_valid", None)
+            human_root_rot = motion_res.get("human_root_rot", None)
+            human_root_rot_valid = motion_res.get("human_root_rot_valid", None)
+            if (
+                human_joints is not None
+                and human_joints.ndim == 3
+                and human_joints.shape[1] == self._debug_human_joints_world.shape[1]
+            ):
+                self._debug_human_joints_world[:] = human_joints
+                if human_root_rot is not None and human_root_rot_valid is not None:
+                    aligned_human_joints = self._motion_lib._align_human_joints_heading_to_target(
+                        human_joints,
+                        human_root_rot,
+                        self.ref_root_rot,
+                    )
+                    valid_root_rot = human_root_rot_valid.to(torch.bool).view(-1)
+                    self._debug_human_joints_world[valid_root_rot] = aligned_human_joints[valid_root_rot]
+                if human_joints_valid is None:
+                    self._has_valid_human_joints[:] = human_joints.shape[1] > 0
+                else:
+                    self._has_valid_human_joints[:] = human_joints_valid.to(torch.bool)
             else:
-                self._has_valid_human_joints[:] = human_joints_valid.to(torch.bool)
-        else:
-            self._has_valid_human_joints[:] = False
+                self._has_valid_human_joints[:] = False
 
         # Optional per-motion scalar (e.g. jumpshot apex height). Broadcast as (num_envs, 1).
         apex_height = motion_res.get("apex_height", None)
@@ -2208,7 +2254,10 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
             # Since reset happens after the first pre-compute, we must refresh tensors and pre-compute again
             # to avoid feeding "fallen" (pre-reset) cached obs into policy on the first post-reset step.
             self._refresh_sim_tensors()
-            self._pre_compute_observations_callback()
+            if getattr(self.config, "partial_motion_refresh", False):
+                self._pre_compute_observations_callback(refresh_env_ids=refresh_env_ids)
+            else:
+                self._pre_compute_observations_callback()
 
         self._compute_observations() # in some cases a simulation step might be required to refresh some obs (for example body positions)
         
@@ -2311,7 +2360,9 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
         motion_times = (self.episode_length_buf) * self.dt + self.motion_start_times # next frames so +1
         offset = self.env_origins
         now_time = self.episode_length_buf * self.dt + self.motion_start_times 
-        motion_res = self._motion_lib.get_motion_state(self.motion_ids, motion_times, now_time, offset=offset)
+        motion_res = self._motion_lib.get_motion_state(
+            self.motion_ids, motion_times, now_time, offset=offset, include_unique_skill_labels=False
+        )
         self._reset_support_asset_states(env_ids, motion_res)
 
         obj_pos_noise = self.config.init_noise_scale.obj_pos * self.config.noise_to_initial_level
@@ -2343,12 +2394,14 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
         """
         # base position
         if self.custom_origins: # trimesh
-            motion_times = (self.episode_length_buf) * self.dt + self.motion_start_times # next frames so +1
-            now_time = self.episode_length_buf * self.dt + self.motion_start_times 
-            offset = self.env_origins
-            motion_res = self._motion_lib.get_motion_state(self.motion_ids, motion_times, now_time, offset=offset)
-            root_pos = motion_res['root_pos'][env_ids]
-            root_rot = motion_res['root_rot'][env_ids]
+            motion_times = self.episode_length_buf[env_ids] * self.dt + self.motion_start_times[env_ids]
+            now_time = motion_times.clone()
+            offset = self.env_origins[env_ids]
+            motion_res = self._motion_lib.get_motion_state(
+                self.motion_ids[env_ids], motion_times, now_time, offset=offset, include_unique_skill_labels=False
+            )
+            root_pos = motion_res['root_pos']
+            root_rot = motion_res['root_rot']
             root_pos_offset = getattr(self.config, "init_root_pos_offset", None)
             if root_pos_offset is not None:
                 root_pos_offset = torch.as_tensor(list(root_pos_offset), device=self.device, dtype=root_pos.dtype)
@@ -2374,20 +2427,20 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
             self._capture_reference_command_heading_state(
                 env_ids,
                 root_rot,
-                motion_res['root_rot'][env_ids],
+                motion_res['root_rot'],
                 self._sample_human_root_quat_at_times(
                     self.motion_ids[env_ids],
-                    now_time[env_ids],
+                    now_time,
                 ),
             )
-            self.simulator.robot_root_states[env_ids, 7:10] = torch.zeros_like(motion_res['root_vel'][env_ids]) #motion_res['root_vel'][env_ids]
-            self.simulator.robot_root_states[env_ids, 10:13] = torch.zeros_like(motion_res['root_ang_vel'][env_ids]) #motion_res['root_ang_vel'][env_ids]
+            self.simulator.robot_root_states[env_ids, 7:10] = torch.zeros_like(motion_res['root_vel'])
+            self.simulator.robot_root_states[env_ids, 10:13] = torch.zeros_like(motion_res['root_ang_vel'])
             
 
         else:
-            motion_times = (self.episode_length_buf) * self.dt + self.motion_start_times # next frames so +1
-            now_time = self.episode_length_buf * self.dt + self.motion_start_times 
-            offset = self.env_origins
+            motion_times = self.episode_length_buf[env_ids] * self.dt + self.motion_start_times[env_ids]
+            now_time = motion_times.clone()
+            offset = self.env_origins[env_ids]
 
             # Apply reset-time state delay offsets (generated in _reset_buffers_callback).
             # Delay direction: subtract time -> sample an EARLIER motion phase for initialization.
@@ -2397,23 +2450,24 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
 
             # sample motion state (robot / object can be decoupled)
             if torch.any(off_r != off_o):
-                motion_times_r = motion_times.clone()
-                now_time_r = now_time.clone()
-                motion_times_o = motion_times.clone()
-                now_time_o = now_time.clone()
+                motion_times_r = torch.clamp(motion_times - off_r, min=0.0)
+                now_time_r = torch.clamp(now_time - off_r, min=0.0)
+                motion_times_o = torch.clamp(motion_times - off_o, min=0.0)
+                now_time_o = torch.clamp(now_time - off_o, min=0.0)
 
-                motion_times_r[env_ids] = torch.clamp(motion_times_r[env_ids] - off_r, min=0.0)
-                now_time_r[env_ids] = torch.clamp(now_time_r[env_ids] - off_r, min=0.0)
-                motion_times_o[env_ids] = torch.clamp(motion_times_o[env_ids] - off_o, min=0.0)
-                now_time_o[env_ids] = torch.clamp(now_time_o[env_ids] - off_o, min=0.0)
-
-                motion_res_robot = self._motion_lib.get_motion_state(self.motion_ids, motion_times_r, now_time_r, offset=offset)
-                motion_res_obj = self._motion_lib.get_motion_state(self.motion_ids, motion_times_o, now_time_o, offset=offset)
+                motion_res_robot = self._motion_lib.get_motion_state(
+                    self.motion_ids[env_ids], motion_times_r, now_time_r, offset=offset, include_unique_skill_labels=False
+                )
+                motion_res_obj = self._motion_lib.get_motion_state(
+                    self.motion_ids[env_ids], motion_times_o, now_time_o, offset=offset, include_unique_skill_labels=False
+                )
             else:
-                motion_times[env_ids] = torch.clamp(motion_times[env_ids] - off_r, min=0.0)
-                now_time[env_ids] = torch.clamp(now_time[env_ids] - off_r, min=0.0)
-                motion_res_robot = motion_res_obj = self._motion_lib.get_motion_state(self.motion_ids, motion_times, now_time, offset=offset)
-            self._reset_support_asset_states(env_ids, motion_res_obj)
+                motion_times = torch.clamp(motion_times - off_r, min=0.0)
+                now_time = torch.clamp(now_time - off_r, min=0.0)
+                motion_res_robot = motion_res_obj = self._motion_lib.get_motion_state(
+                    self.motion_ids[env_ids], motion_times, now_time, offset=offset, include_unique_skill_labels=False
+                )
+            self._reset_support_asset_states(env_ids, motion_res_obj, selected_rows=True)
 
             #robot
             root_pos_noise = self.config.init_noise_scale.root_pos * self.config.noise_to_initial_level
@@ -2423,10 +2477,10 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
             root_vel_noise = self.config.init_noise_scale.root_vel * self.config.noise_to_initial_level
             root_ang_vel_noise = self.config.init_noise_scale.root_ang_vel * self.config.noise_to_initial_level
 
-            root_pos = motion_res_robot['root_pos'][env_ids]
-            root_rot = motion_res_robot['root_rot'][env_ids]
-            root_vel = motion_res_robot['root_vel'][env_ids]
-            root_ang_vel = motion_res_robot['root_ang_vel'][env_ids]
+            root_pos = motion_res_robot['root_pos']
+            root_rot = motion_res_robot['root_rot']
+            root_vel = motion_res_robot['root_vel']
+            root_ang_vel = motion_res_robot['root_ang_vel']
 
             root_pos_offset = getattr(self.config, "init_root_pos_offset", None)
             if root_pos_offset is not None:
@@ -2480,7 +2534,7 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
                 root_rot,
                 self._sample_human_root_quat_at_times(
                     self.motion_ids[env_ids],
-                    now_time[env_ids],
+                    now_time,
                 ),
             )
             
@@ -2495,10 +2549,10 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
                 self.simulator.robot_root_states[env_ids, 10:13] = root_ang_vel + torch.randn_like(root_ang_vel) * root_ang_vel_noise
 
             obj_pos_noise = self.config.init_noise_scale.obj_pos * self.config.noise_to_initial_level
-            obj_root_pos = motion_res_obj['curr_obj_pos'][env_ids] 
-            obj_root_rot = motion_res_obj['curr_obj_rot'][env_ids]
-            obj_root_vel = motion_res_obj['curr_obj_vel'][env_ids]
-            obj_root_ang_vel = motion_res_obj['curr_obj_ang_vel'][env_ids]
+            obj_root_pos = motion_res_obj['curr_obj_pos']
+            obj_root_rot = motion_res_obj['curr_obj_rot']
+            obj_root_vel = motion_res_obj['curr_obj_vel']
+            obj_root_ang_vel = motion_res_obj['curr_obj_ang_vel']
             obj_root_pos = self._apply_init_obj_pos_offset(obj_root_pos)
 
             self.simulator.object_root_state[env_ids, :3] = apply_xy_only_init_noise(obj_root_pos, obj_pos_noise)
@@ -2545,14 +2599,15 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
             else:
                 if obj_freeze.ndim > 1:
                     obj_freeze = obj_freeze.squeeze(-1)
-                self._freeze_obj_buf[env_ids] = obj_freeze[env_ids].to(torch.bool)
+                self._freeze_obj_buf[env_ids] = obj_freeze.to(torch.bool)
 
             freeze_env_ids = env_ids[self._freeze_obj_buf[env_ids]]
             if freeze_env_ids.numel() > 0:
                 # For frozen envs: no init noise, and zero velocities.
-                freeze_obj_pos = self._apply_init_obj_pos_offset(motion_res_obj["curr_obj_pos"][freeze_env_ids])
+                freeze_mask = self._freeze_obj_buf[env_ids]
+                freeze_obj_pos = self._apply_init_obj_pos_offset(motion_res_obj["curr_obj_pos"][freeze_mask])
                 self.simulator.object_root_state[freeze_env_ids, :3] = freeze_obj_pos
-                self.simulator.object_root_state[freeze_env_ids, 3:7] = motion_res_obj["curr_obj_rot"][freeze_env_ids]
+                self.simulator.object_root_state[freeze_env_ids, 3:7] = motion_res_obj["curr_obj_rot"][freeze_mask]
                 self.simulator.object_root_state[freeze_env_ids, 7:13] = 0.0
                 self._frozen_obj_root_state[freeze_env_ids] = self.simulator.object_root_state[freeze_env_ids].clone()
 
@@ -2599,19 +2654,21 @@ class LeggedRobotMotionTrackingHOI(LeggedRobotBase):
             env_ids (List[int]): Environemnt ids
         """
 
-        motion_times = (self.episode_length_buf) * self.dt + self.motion_start_times # next frames so +1
-        now_time = self.episode_length_buf * self.dt + self.motion_start_times 
-        offset = self.env_origins
+        motion_times = self.episode_length_buf[env_ids] * self.dt + self.motion_start_times[env_ids]
+        now_time = motion_times.clone()
+        offset = self.env_origins[env_ids]
         # Apply robot reset-time delay to DOFs as well (keeps robot state internally consistent).
         off_r = self._state_delay_init_offset_s_robot[env_ids]
-        motion_times[env_ids] = torch.clamp(motion_times[env_ids] - off_r, min=0.0)
-        now_time[env_ids] = torch.clamp(now_time[env_ids] - off_r, min=0.0)
-        motion_res = self._motion_lib.get_motion_state(self.motion_ids, motion_times, now_time, offset=offset)
+        motion_times = torch.clamp(motion_times - off_r, min=0.0)
+        now_time = torch.clamp(now_time - off_r, min=0.0)
+        motion_res = self._motion_lib.get_motion_state(
+            self.motion_ids[env_ids], motion_times, now_time, offset=offset, include_unique_skill_labels=False
+        )
 
         dof_pos_noise = self.config.init_noise_scale.dof_pos * self.config.noise_to_initial_level
         dof_vel_noise = self.config.init_noise_scale.dof_vel * self.config.noise_to_initial_level
-        dof_pos = motion_res['dof_pos'][env_ids]
-        dof_vel = motion_res['dof_vel'][env_ids]
+        dof_pos = motion_res['dof_pos']
+        dof_vel = motion_res['dof_vel']
         self.simulator.dof_pos[env_ids] = dof_pos + torch.randn_like(dof_pos) * dof_pos_noise #* 10 #wyh
         if self.config.zero_root_vel_init:
             self.simulator.dof_vel[env_ids] = torch.zeros_like(dof_vel) + torch.randn_like(dof_vel) * dof_vel_noise #dof_vel + torch.randn_like(dof_vel) * dof_vel_noise
